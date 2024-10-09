@@ -53,13 +53,14 @@ pull_db() {
   remote_db_user=$(yq e ".${remote_env}.database.user" $CONFIG_FILE)
   remote_db_password=$(yq e ".${remote_env}.database.password" $CONFIG_FILE)
   remote_db_host=$(yq e ".${remote_env}.database.host" $CONFIG_FILE)
+  remote_ssh_user=$(yq e ".${remote_env}.ssh.user" $CONFIG_FILE)
   remote_ssh_host=$(yq e ".${remote_env}.ssh.host" $CONFIG_FILE)
   remote_wp_path=$(yq e ".${remote_env}.wordpress_path" $CONFIG_FILE)
 
   # Export the remote database and transfer it to the local machine
   echo "Exporting database from $remote_env environment..."
-  ssh $remote_ssh_host "wp db export $remote_wp_path/remote-dump.sql --path=$remote_wp_path"
-  scp $remote_ssh_host:$remote_wp_path/remote-dump.sql ./local-dump.sql
+  ssh $remote_ssh_user@$remote_ssh_host "wp db export $remote_wp_path/remote-dump.sql --path=$remote_wp_path"
+  scp $remote_ssh_user@$remote_ssh_host:$remote_wp_path/remote-dump.sql ./local-dump.sql
 
   # Import the remote database into the local environment
   echo "Importing database into local environment..."
@@ -85,6 +86,7 @@ push_db() {
   remote_db_user=$(yq e ".${remote_env}.database.user" $CONFIG_FILE)
   remote_db_password=$(yq e ".${remote_env}.database.password" $CONFIG_FILE)
   remote_db_host=$(yq e ".${remote_env}.database.host" $CONFIG_FILE)
+  remote_ssh_user=$(yq e ".${remote_env}.ssh.user" $CONFIG_FILE)
   remote_ssh_host=$(yq e ".${remote_env}.ssh.host" $CONFIG_FILE)
   remote_wp_path=$(yq e ".${remote_env}.wordpress_path" $CONFIG_FILE)
 
@@ -94,16 +96,16 @@ push_db() {
 
   # Transfer the local database to the remote environment
   echo "Transferring database to $remote_env environment..."
-  scp ./local-dump.sql $remote_ssh_host:$remote_wp_path/remote-dump.sql
+  scp ./local-dump.sql $remote_ssh_user@$remote_ssh_host:$remote_wp_path/remote-dump.sql
 
   # Import the database into the remote environment
   echo "Importing database into remote environment..."
-  ssh $remote_ssh_host "wp db import $remote_wp_path/remote-dump.sql --path=$remote_wp_path"
+  ssh $remote_ssh_user@$remote_ssh_host "wp db import $remote_wp_path/remote-dump.sql --path=$remote_wp_path"
 
   # Optionally run a search-replace to update URLs
   local_url=$(yq e ".local.vhost" $CONFIG_FILE)
   remote_url=$(yq e ".${remote_env}.vhost" $CONFIG_FILE)
-  ssh $remote_ssh_host "wp search-replace '$local_url' '$remote_url' --path=$remote_wp_path"
+  ssh $remote_ssh_user@$remote_ssh_host "wp search-replace '$local_url' '$remote_url' --path=$remote_wp_path"
 
   echo "Database push from local to $remote_env completed."
 }
